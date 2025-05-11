@@ -47,7 +47,7 @@ if [[ "$DRY_RUN" == true ]]; then
 fi
 
 kill_internet() {
-    info "NETKILL starting..."
+    info "NETKILL starting at ${INTERFACE} using ${GATEWAY}..."
     local isSpoofing=0
 
     if [[ -f "$PID_FILE" ]]; then
